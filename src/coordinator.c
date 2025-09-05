@@ -222,19 +222,52 @@ int main(int argc, char *argv[]) {
     printf("\n=== Resultado ===\n");
 
     // TODO 9: Verificar se algum worker encontrou a senha
-    FILE *f = fopen(RESULT_FILE, "r");
-    if (f) {
-        char buffer[256];
-        if (fgets(buffer, sizeof(buffer), f) != NULL) {
-            char *newline_pos = strchr(buffer, '\n');
-            if (newline_pos) {
-                *newline_pos = '\0';
+    // Leia e verifique o arquivo de resultado
+    char buffer[256];
+    char found_password[11];
+    char computed_hash[33];
+    int worker_id = -1;
+    char *colon_pos;
+    ssize_t bytes_read;
+
+    int fd = open(RESULT_FILE, O_RDONLY);
+
+    if (fd >= 0) { 
+        bytes_read = read(fd, buffer, sizeof(buffer) - 1);
+        close(fd);
+
+        if (bytes_read > 0) {
+            buffer[bytes_read] = '\0';
+            
+            
+            colon_pos = strchr(buffer, ':');
+            if (colon_pos) {
+                *colon_pos = '\0';
+                worker_id = atoi(buffer);
+                strcpy(found_password, colon_pos + 1);
+                
+                
+                char *newline_pos = strchr(found_password, '\n');
+                if (newline_pos) {
+                    *newline_pos = '\0';
+                }
+
+                
+                md5_string(found_password, computed_hash);
+                
+                if (strcmp(computed_hash, target_hash) == 0) {
+                    
+                    printf("✓ Senha encontrada: %s\n", found_password);
+                    printf("Verificada com sucesso. Encontrada pelo worker %d.\n", worker_id);
+                } else {
+                    printf("X Senha encontrada, mas o hash não corresponde.\n");
+                }
+            } else {
+                printf("X Erro de formato no arquivo de resultado.\n");
             }
-            printf("✓ Senha encontrada: %s\n", buffer);
         } else {
             printf("Senha não encontrada (arquivo de resultado vazio).\n");
         }
-        fclose(f);
     } else {
         printf("Senha não encontrada.\n");
     }
